@@ -4,13 +4,7 @@ import os
 import zipfile
 import io
 
-# from langchain_community.tools.tavily_search import TavilySearchResults
-
-
-@tool
-def multiply(a: int, b: int) -> int:
-    """Multiply two numbers."""
-    return a * b
+from langchain_community.tools.tavily_search import TavilySearchResults
 
 
 @tool
@@ -41,7 +35,8 @@ def create_spring_boot_app(
         java_version (str): The version of Java to use (e.g., '17').
         type (str): The type of project (e.g., 'maven-project' or 'gradle-project').
         language (str): The programming language (e.g., 'java').
-        boot_version (str): The version of Spring Boot to use (e.g., '3.0.0').
+        boot_version (str): The version of Spring Boot to use (e.g., '3.3.3').
+        packaging(str): the type of packaging (e.g., war,jar)
         base_dir (str): The directory where the project should be generated.
 
     Returns:
@@ -62,7 +57,8 @@ def create_spring_boot_app(
             java_version='17',
             type='maven-project',
             language='java',
-            boot_version='3.0.0',
+            boot_version='3.3.3',
+            packaging='war'
             base_dir='./generated_spring_app'
         )
         print(f"Project created at: {project_path}")
@@ -97,5 +93,4 @@ def create_spring_boot_app(
         raise
 
 
-# tools = [TavilySearchResults(max_results=1)]
-tools = [multiply, create_spring_boot_app]
+tavily_tool = TavilySearchResults(max_results=5)
