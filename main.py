@@ -1,5 +1,4 @@
 from typing import Annotated
-
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_experimental.tools import PythonREPLTool
 
@@ -144,16 +143,16 @@ workflow.add_edge(START, "supervisor")
 
 graph = workflow.compile()
 
-for s in graph.stream(
-    {
-        "messages": [
-            HumanMessage(content="Code hello world and print it to the terminal")
-        ]
-    }
-):
-    if "__end__" not in s:
-        print(s)
-        print("----")
+# for s in graph.stream(
+#     {
+#         "messages": [
+#             HumanMessage(content="Code hello world and print it to the terminal")
+#         ]
+#     }
+# ):
+#     if "__end__" not in s:
+#         print(s)
+#         print("----")
 
 # from my_agent.agent import graph
 # from langchain_core.messages import HumanMessage
