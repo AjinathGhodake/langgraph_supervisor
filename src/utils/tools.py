@@ -3,12 +3,21 @@ import requests
 import os
 import zipfile
 import io
+import shutil
+import subprocess
+import stat
+import logging
+import signal
+
 
 from langchain_community.tools.tavily_search import TavilySearchResults
 
+tavily_tool = TavilySearchResults(max_results=5)
+logging.basicConfig(level=logging.INFO, filename="execution.log", filemode="w")
+
 
 @tool
-def create_spring_boot_app(
+def initialize_spring_boot_app(
     group_id,
     artifact_id,
     name,
@@ -23,7 +32,8 @@ def create_spring_boot_app(
     base_dir,
 ):
     """
-    Generates a Spring Boot application using Spring Initializr and extracts it to the specified directory.
+    Initialize a Spring Boot application using Spring Initializer and extracts it to the specified directory.
+    When start the initialization clear the ./generated_spring_app directory
 
     Args:
         group_id (str): The group ID of the project (e.g., 'com.example').
@@ -64,7 +74,7 @@ def create_spring_boot_app(
         print(f"Project created at: {project_path}")
     """
     # Construct the URL for Spring Initializr
-    spring_initializr_url = (
+    spring_initialize_url = (
         f"https://start.spring.io/starter.zip?type={type}&language={language}&bootVersion={boot_version}"
         f"&baseDir={artifact_id}&groupId={group_id}&artifactId={artifact_id}&name={name}"
         f"&description={description}&packageName={package_name}&packaging={packaging}"
@@ -73,12 +83,16 @@ def create_spring_boot_app(
 
     try:
         # Send GET request to Spring Initializr to download the project zip
-        response = requests.get(spring_initializr_url)
+        response = requests.get(spring_initialize_url)
         response.raise_for_status()
 
-        # Create the base directory if it doesn't exist
-        if not os.path.exists(base_dir):
-            os.makedirs(base_dir)
+        # Overwrite the directory
+        if os.path.exists(base_dir):
+            shutil.rmtree(base_dir)  # Delete the existing directory
+            print(f"Deleted existing directory: {base_dir}")
+
+        os.makedirs(base_dir)  # Create a new directory with the same name
+        print(f"Created new directory: {base_dir}")
 
         # Unzip the downloaded project archive into the base directory
         with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
@@ -93,4 +107,84 @@ def create_spring_boot_app(
         raise
 
 
-tavily_tool = TavilySearchResults(max_results=5)
+@tool
+def spring_boot_code_exists_test(project_path="./generated_spring_app/myapp"):
+    """
+    Run basic tests on the initialized Spring Boot application to ensure it was generated correctly.
+
+    Args:
+        project_path (str): The path to the generated Spring Boot project.
+
+    Returns:
+        dict: A dictionary containing the results of the tests (e.g., whether the application starts up, key files exist).
+
+    Example:
+        test_results = spring_boot_code_exists_test(project_path='./generated_spring_app/myapp')
+        print(test_results)
+    """
+
+    test_results = {
+        "project_exists": False,
+        "mvnw_exists": False,
+        "pom_exists": False,
+        "app_starts": False,
+    }
+    project_path = "./generated_spring_app/myapp"
+    print(">>>>>>project_path", project_path)
+
+    # Check if the project directory exists
+    if os.path.exists(project_path):
+        test_results["project_exists"] = True
+
+        # Check for Maven wrapper script
+        mvnw_path = os.path.join(project_path, "mvnw")
+        if os.path.exists(mvnw_path):
+            test_results["mvnw_exists"] = True
+
+            # Ensure the mvnw script has executable permissions
+            st = os.stat(mvnw_path)
+            os.chmod(mvnw_path, st.st_mode | stat.S_IEXEC)
+
+        # Check for pom.xml file
+        pom_path = os.path.join(project_path, "pom.xml")
+        if os.path.exists(pom_path):
+            test_results["pom_exists"] = True
+
+        # Try to start the Spring Boot application
+        try:
+            process = subprocess.Popen(
+                ["./mvnw", "spring-boot:run"],
+                cwd=project_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,  # Ensures the output is in text format
+            )
+
+            # Monitor the output for successful start
+            for stdout_line in iter(process.stdout.readline, ""):
+                logging.info(stdout_line.strip())
+                print(stdout_line.strip())
+                if "Started MyAppApplication" in stdout_line:
+                    test_results["app_starts"] = True
+                    break
+
+            # Terminate the application gracefully if it started
+            if test_results["app_starts"]:
+                process.send_signal(
+                    signal.SIGINT
+                )  # Send SIGINT to stop the application
+
+            # Wait for the process to terminate
+            process.stdout.close()
+            process.stderr.close()
+            process.wait()
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error starting Spring Boot application: {e}")
+            test_results["app_starts"] = False
+
+        print("Status of testing:", test_results)
+    else:
+        print(f"Project directory {project_path} does not exist.")
+
+    return test_results

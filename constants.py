@@ -2,5 +2,5 @@ SUPERVISOR = "supervisor"
 INITIALIZER = "initializer"
 
 
-MEMBERS = ["Researcher", "Coder"]
+MEMBERS = ["initialization", "testing"]
 OPTIONS = ["FINISH"] + MEMBERS
