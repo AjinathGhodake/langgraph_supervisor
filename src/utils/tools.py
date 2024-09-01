@@ -73,34 +73,35 @@ def initialize_spring_boot_app(
         )
         print(f"Project created at: {project_path}")
     """
-    # Construct the URL for Spring Initializr
-    spring_initialize_url = (
-        f"https://start.spring.io/starter.zip?type={type}&language={language}&bootVersion={boot_version}"
-        f"&baseDir={artifact_id}&groupId={group_id}&artifactId={artifact_id}&name={name}"
-        f"&description={description}&packageName={package_name}&packaging={packaging}"
-        f"&javaVersion={java_version}&dependencies={dependencies}"
-    )
-
     try:
-        # Send GET request to Spring Initializr to download the project zip
-        response = requests.get(spring_initialize_url)
-        response.raise_for_status()
 
-        # Overwrite the directory
-        if os.path.exists(base_dir):
-            shutil.rmtree(base_dir)  # Delete the existing directory
-            print(f"Deleted existing directory: {base_dir}")
+        directory_exists = os.path.exists("./generated_spring_app")
 
-        os.makedirs(base_dir)  # Create a new directory with the same name
-        print(f"Created new directory: {base_dir}")
+        if directory_exists:
+            # If the directory exists, report to the supervisor with the file path
+            return {"next": "supervisor", "file_path": "./generated_spring_app"}
+        else:
+            # Construct the URL for Spring Initializr
+            spring_initialize_url = (
+                f"https://start.spring.io/starter.zip?type={type}&language={language}&bootVersion={boot_version}"
+                f"&baseDir={artifact_id}&groupId={group_id}&artifactId={artifact_id}&name={name}"
+                f"&description={description}&packageName={package_name}&packaging={packaging}"
+                f"&javaVersion={java_version}&dependencies={dependencies}"
+            )
+            # Send GET request to Spring Initializr to download the project zip
+            response = requests.get(spring_initialize_url)
+            response.raise_for_status()
 
-        # Unzip the downloaded project archive into the base directory
-        with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-            zip_ref.extractall(base_dir)
+            if not os.path.exists(base_dir):
+                os.makedirs(base_dir)
 
-        project_path = os.path.join(base_dir, artifact_id)
-        print(f"Spring Boot application generated at: {project_path}")
-        return project_path
+            # Unzip the downloaded project archive into the base directory
+            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+                zip_ref.extractall(base_dir)
+
+            project_path = os.path.join(base_dir, artifact_id)
+            print(f"Spring Boot application generated at: {project_path}")
+            return project_path
 
     except requests.exceptions.RequestException as e:
         print(f"Error generating Spring Boot application: {e}")
@@ -188,3 +189,28 @@ def spring_boot_code_exists_test(project_path="./generated_spring_app/myapp"):
         print(f"Project directory {project_path} does not exist.")
 
     return test_results
+
+
+@tool
+def read_file_content(file_path: str):
+    """
+    Read the content of a file from the given path.
+
+    Args:
+        file_path (str): The path of the file to read.
+
+    Returns:
+        str: The content of the file as a string.
+
+    Raises:
+        FileNotFoundError: If the file at the given path does not exist.
+        IOError: If an I/O error occurs while reading the file.
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read()
+        return content
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {file_path}")
+    except IOError as e:
+        raise IOError(f"Error reading file {file_path}: {e}")

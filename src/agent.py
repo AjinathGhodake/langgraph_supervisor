@@ -7,10 +7,13 @@ from src.utils.nodes import _get_model, agent_node, create_agent
 from src.utils.state import AgentState
 from src.utils.tools import (
     initialize_spring_boot_app,
+    read_file_content,
     spring_boot_code_exists_test,
     # tavily_tool,
 )
-from src.utils.function_definition import function_def
+from src.utils.function_definition import (
+    function_def,
+)
 
 from src.utils.prompt import supervisor_prompt
 from constants import MEMBERS
@@ -23,13 +26,11 @@ model = _get_model("groq")
 
 supervisor_node = (
     supervisor_prompt
-    | model.bind_functions(functions=[function_def], function_call="route")
+    | model.bind_functions(
+        functions=[function_def],
+    )
     | JsonOutputFunctionsParser()
 )
-
-
-# research_agent = create_agent("groq", "You are a web researcher.", [tavily_tool])
-# research_node = functools.partial(agent_node, agent=research_agent, name="Researcher")
 
 # NOTE: THIS PERFORMS ARBITRARY CODE EXECUTION. PROCEED WITH CAUTION
 initialization_agent = create_agent(
@@ -39,7 +40,7 @@ initialization_agent = create_agent(
     [initialize_spring_boot_app],
 )
 initialization_node = functools.partial(
-    agent_node, agent=initialization_agent, name="initialization"
+    agent_node, agent=initialization_agent, name="Initialization"
 )
 
 testing_agent = create_agent(
@@ -48,11 +49,23 @@ testing_agent = create_agent(
     " tests on the initialized application and ensure everything is functioning as expected.",
     [spring_boot_code_exists_test],
 )
-testing_node = functools.partial(agent_node, agent=testing_agent, name="testing")
+testing_node = functools.partial(agent_node, agent=testing_agent, name="Testing")
+
+file_reader_agent = create_agent(
+    "groq",
+    "You are an expert in reading and analyzing PHP code. Your task is to read the PHP file from the specified path and extract its entire content as text."
+    " The extracted code will then be used for transformation or migration to a different language or framework."
+    " Please ensure that the content is read accurately, preserving all code details, comments, and structure.",
+    [read_file_content],
+)
+file_reader_node = functools.partial(
+    agent_node, agent=file_reader_agent, name="File_reader"
+)
 workflow = StateGraph(AgentState)
 # workflow.add_node("Researcher", research_node)
-workflow.add_node("initialization", initialization_node)
-workflow.add_node("testing", testing_node)
+workflow.add_node("Initialization", initialization_node)
+workflow.add_node("Testing", testing_node)
+workflow.add_node("File_reader", file_reader_node)
 workflow.add_node("supervisor", supervisor_node)
 
 for member in MEMBERS:
@@ -72,7 +85,7 @@ for s in graph.stream(
     {
         "messages": [
             HumanMessage(
-                content="Initialize spring boot application, boot version 3.3.3, and write api for get hello word text"
+                content=f"file path of PHP `/Users/aj/development/PHP/ambrygen-ambryport-2d12b0987277/src/Ambry/PortalBundle/Controller/Aps/ApsAdminCompliaceController.php`"
             )
         ]
     },

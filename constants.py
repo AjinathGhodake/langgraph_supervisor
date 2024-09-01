@@ -2,5 +2,5 @@ SUPERVISOR = "supervisor"
 INITIALIZER = "initializer"
 
 
-MEMBERS = ["initialization", "testing"]
+MEMBERS = ["Initialization", "Testing", "File_reader"]
 OPTIONS = ["FINISH"] + MEMBERS
