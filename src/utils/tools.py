@@ -18,43 +18,26 @@ logging.basicConfig(level=logging.INFO, filename="execution.log", filemode="w")
 
 @tool
 def initialize_spring_boot_app(
-    group_id,
-    artifact_id,
-    name,
-    description,
-    package_name,
-    dependencies,
-    java_version,
-    type,
-    language,
-    boot_version,
-    packaging,
-    base_dir,
-):
+    group_id: str,
+    artifact_id: str,
+    name: str,
+    description: str,
+    package_name: str,
+    dependencies: str,
+    java_version: str,
+    type: str,
+    language: str,
+    boot_version: str,
+    packaging: str,
+    base_dir: str,
+) -> str:
     """
-    Initialize a Spring Boot application using Spring Initializer and extracts it to the specified directory.
-    When start the initialization clear the ./generated_spring_app directory
-
-    Args:
-        group_id (str): The group ID of the project (e.g., 'com.example').
-        artifact_id (str): The artifact ID of the project (e.g., 'myapp').
-        name (str): The name of the project (e.g., 'MyApp').
-        description (str): A brief description of the project.
-        package_name (str): The base package name for the project (e.g., 'com.example.myapp').
-        dependencies (str): A comma-separated list of dependencies to include (e.g., 'web,data-jpa,h2').
-        java_version (str): The version of Java to use (e.g., '17').
-        type (str): The type of project (e.g., 'maven-project' or 'gradle-project').
-        language (str): The programming language (e.g., 'java').
-        boot_version (str): The version of Spring Boot to use (e.g., '3.3.3').
-        packaging(str): the type of packaging (e.g., war,jar)
-        base_dir (str): The directory where the project should be generated.
-
+    Initializes a Spring Boot application using Spring Initializer.
     Returns:
-        str: The path to the generated Spring Boot project.
+        The path to the generated Spring Boot project.
 
     Raises:
         requests.exceptions.RequestException: If the request to Spring Initializr fails.
-        zipfile.BadZipFile: If there is an issue with unzipping the downloaded project archive.
 
     Example:
         project_path = create_spring_boot_app(
@@ -74,28 +57,27 @@ def initialize_spring_boot_app(
         print(f"Project created at: {project_path}")
     """
     try:
-
         directory_exists = os.path.exists("./generated_spring_app")
 
         if directory_exists:
-            # If the directory exists, report to the supervisor with the file path
-            return {"next": "supervisor", "file_path": "./generated_spring_app"}
+            return {
+                "next": "supervisor",
+                "project_path": "./generated_spring_app/myapp",
+                "key_files": [os.path.join("./generated_spring_app/myapp", "pom.xml")],
+            }
         else:
-            # Construct the URL for Spring Initializr
             spring_initialize_url = (
                 f"https://start.spring.io/starter.zip?type={type}&language={language}&bootVersion={boot_version}"
                 f"&baseDir={artifact_id}&groupId={group_id}&artifactId={artifact_id}&name={name}"
                 f"&description={description}&packageName={package_name}&packaging={packaging}"
                 f"&javaVersion={java_version}&dependencies={dependencies}"
             )
-            # Send GET request to Spring Initializr to download the project zip
             response = requests.get(spring_initialize_url)
             response.raise_for_status()
 
             if not os.path.exists(base_dir):
                 os.makedirs(base_dir)
 
-            # Unzip the downloaded project archive into the base directory
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
                 zip_ref.extractall(base_dir)
 
@@ -214,3 +196,39 @@ def read_file_content(file_path: str):
         raise FileNotFoundError(f"File not found: {file_path}")
     except IOError as e:
         raise IOError(f"Error reading file {file_path}: {e}")
+
+
+@tool
+def write_controller_code(file_path: str, java_code: str):
+    """
+    Write the given Java controller code to the specified file.
+
+    Args:
+        file_path (str): The path where the Java controller file should be created.
+        java_code (str): The Java controller code to be written to the file.
+
+    Returns:
+        str: A message indicating the success of the operation.
+
+    Example:
+        write_controller_code(
+            file_path='./generated_spring_app/myapp/src/main/java/com/example/myapp/controller/MyController.java',
+            java_code='public class MyController { ... }'
+        )
+    """
+    # Ensure the directory exists
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # Write the Java code to the file
+    with open(file_path, "w") as file:
+        file.write(java_code)
+
+    return f"Java controller code has been written to {file_path}"
+
+
+@tool()
+def default_tool():
+    """Default tool"""
+    pass

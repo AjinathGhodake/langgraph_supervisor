@@ -21,3 +21,24 @@ function_def = {
         "required": ["next"],
     },
 }
+
+json_schema = {
+    "name": "format_json_schema",
+    "description": "Formats a Python dictionary as a JSON schema string.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "schema": {
+                "type": "object",
+                "description": "The Python dictionary representing the JSON schema.",
+                "properties": {
+                    "name": {"type": "string"},
+                    "age": {"type": "number"},
+                    "is_student": {"type": "boolean"},
+                    "courses": {"type": "array", "items": {"type": "string"}},
+                },
+            }
+        },
+        "required": ["schema"],
+    },
+}

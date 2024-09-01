@@ -7,6 +7,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 
+from main import AgentState
+
 
 @lru_cache(maxsize=4)
 def _get_model(model_name: str):
@@ -32,7 +34,6 @@ def create_agent(
     system_prompt: str,
     tools: list = [],
     functions: list = [],
-    function_name: str = "",
 ):
     # Ensure 'system_prompt' is either a pre-constructed prompt or string
     if isinstance(system_prompt, ChatPromptTemplate):
@@ -47,9 +48,19 @@ def create_agent(
         )
 
     model = _get_model(provider_name)
-    # if functions:
-    #     model.bind_functions(functions=functions, function_call=function_name)
+    if functions:
+        model.bind_functions(functions=functions)
 
     agent = create_openai_tools_agent(model, tools, prompt)
+
     executor = AgentExecutor(agent=agent, tools=tools)
     return executor
+
+
+def update_application_structure(state: AgentState, result):
+    state.set_application_structure(
+        {
+            "project_path": result.get("project_path"),
+            "key_files": result.get("key_files", []),  # Adjust based on actual output
+        }
+    )
