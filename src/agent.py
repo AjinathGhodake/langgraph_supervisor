@@ -7,7 +7,6 @@ from src.utils.nodes import (
     _get_model,
     agent_node,
     create_agent,
-    update_application_structure,
 )
 from src.utils.state import AgentState
 from src.utils.tools import (
@@ -23,6 +22,7 @@ from src.utils.prompt import supervisor_prompt
 from constants import LLM_PLATFORM, MEMBERS
 from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain_core.messages import HumanMessage
+import os
 
 
 model = _get_model(LLM_PLATFORM)
@@ -56,9 +56,10 @@ testing_node = functools.partial(agent_node, agent=testing_agent, name="Testing"
 
 file_reader_agent = create_agent(
     LLM_PLATFORM,
-    "You are an expert in reading and analyzing PHP code. Your task is to read the PHP file from the specified path and extract its entire content as text."
-    " The extracted code will then be used for transformation or migration to a different language or framework."
-    " Please ensure that the content is read accurately, preserving all code details, comments, and structure.",
+    "You are an expert in reading and analyzing PHP code. Your task is to read the PHP file "
+    "from the specified path and extract its entire content as text. "
+    "The extracted code will then be used for transformation or migration to a different language or framework. "
+    "Please ensure that the content is read accurately, preserving all code details, comments, and structure.",
     [read_file_content],
 )
 file_reader_node = functools.partial(
@@ -125,19 +126,32 @@ workflow.add_edge(START, "supervisor")
 
 graph = workflow.compile()
 
-for s in graph.stream(
-    {
-        "messages": [
-            HumanMessage(
-                content=f"Initialize spring boot application, the base directory is ./generate_spring_app."
-                " write controller, services, repositories. file path of PHP `/Users/aj/development/python/langgraph-example/src/ApsAdminCompliaceController.php`"
-            )
-        ]
-    },
-    {"recursion_limit": 20},
-):
-    # if "__end__" not in s:
-    print(s)
-    print("----")
+# Get the current working directory
+current_dir = os.getcwd()
+# Create the path to the PHP file
+php_file = os.path.join(current_dir, "src", "ApsAdminCompliaceController.php")
+# Create path to the generate directory
+generate_dir = os.path.join(current_dir, "generate_spring_app")
 
-# /deps/langgraph-example/src/ApsAdminCompliaceController.php
+# Make sure the PHP file exists before starting
+if not os.path.exists(php_file):
+    print(f"Warning: PHP file does not exist at: {php_file}")
+    print("Please make sure the PHP file exists before running this script.")
+    exit(1)
+
+# for s in graph.stream(
+#     {
+#         "messages": [
+#             HumanMessage(
+#                 content=f"Initialize spring boot application, the base directory is {generate_dir}. "
+#                 f"Write controller, services, repositories. File path of PHP is '{php_file}'"
+#             )
+#         ]
+#     },
+#     {"recursion_limit": 20},
+# ):
+#     # if "__end__" not in s:
+#     print(s)
+#     print("----")
+
+# Updated to use local paths instead of Docker paths

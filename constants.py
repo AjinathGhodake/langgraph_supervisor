@@ -9,4 +9,4 @@ MEMBERS = [
 ]
 OPTIONS = ["FINISH"] + MEMBERS
 
-LLM_PLATFORM: Literal["openai", "ollama", "groq"] = "groq"
+LLM_PLATFORM: Literal["openai", "ollama", "groq"] = "openai"

@@ -3,7 +3,6 @@ import requests
 import os
 import zipfile
 import io
-import shutil
 import subprocess
 import stat
 import logging
@@ -57,13 +56,16 @@ def initialize_spring_boot_app(
         print(f"Project created at: {project_path}")
     """
     try:
-        directory_exists = os.path.exists("./generated_spring_app")
+        # Use absolute path for the directory
+        absolute_base_dir = os.path.abspath(base_dir)
+        directory_exists = os.path.exists(absolute_base_dir)
 
         if directory_exists:
+            project_path = os.path.join(absolute_base_dir, artifact_id)
             return {
                 "next": "supervisor",
-                "project_path": "./generated_spring_app/myapp",
-                "key_files": [os.path.join("./generated_spring_app/myapp", "pom.xml")],
+                "project_path": project_path,
+                "key_files": [os.path.join(project_path, "pom.xml")],
             }
         else:
             spring_initialize_url = (
@@ -75,13 +77,13 @@ def initialize_spring_boot_app(
             response = requests.get(spring_initialize_url)
             response.raise_for_status()
 
-            if not os.path.exists(base_dir):
-                os.makedirs(base_dir)
+            if not os.path.exists(absolute_base_dir):
+                os.makedirs(absolute_base_dir)
 
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-                zip_ref.extractall(base_dir)
+                zip_ref.extractall(absolute_base_dir)
 
-            project_path = os.path.join(base_dir, artifact_id)
+            project_path = os.path.join(absolute_base_dir, artifact_id)
             print(f"Spring Boot application generated at: {project_path}")
             return project_path
 
@@ -91,7 +93,7 @@ def initialize_spring_boot_app(
 
 
 @tool
-def spring_boot_code_exists_test(project_path="./generated_spring_app/myapp"):
+def spring_boot_code_exists_test(project_path=None):
     """
     Run basic tests on the initialized Spring Boot application to ensure it was generated correctly.
 
@@ -99,10 +101,13 @@ def spring_boot_code_exists_test(project_path="./generated_spring_app/myapp"):
         project_path (str): The path to the generated Spring Boot project.
 
     Returns:
-        dict: A dictionary containing the results of the tests (e.g., whether the application starts up, key files exist).
+        dict: A dictionary containing the results of the tests (e.g., whether the application starts up,
+              key files exist).
 
     Example:
-        test_results = spring_boot_code_exists_test(project_path='./generated_spring_app/myapp')
+        test_results = spring_boot_code_exists_test(
+            project_path='./generated_spring_app/myapp'
+        )
         print(test_results)
     """
 
@@ -112,8 +117,15 @@ def spring_boot_code_exists_test(project_path="./generated_spring_app/myapp"):
         "pom_exists": False,
         "app_starts": False,
     }
-    project_path = "./generated_spring_app/myapp"
-    print(">>>>>>project_path", project_path)
+
+    # If no project_path is provided, use default but make it an absolute path
+    if project_path is None:
+        default_path = "./generate_spring_app/myapp"
+        project_path = os.path.abspath(default_path)
+    else:
+        project_path = os.path.abspath(project_path)
+
+    print(f"Testing Spring Boot application at: {project_path}")
 
     # Check if the project directory exists
     if os.path.exists(project_path):
@@ -189,13 +201,15 @@ def read_file_content(file_path: str):
         IOError: If an I/O error occurs while reading the file.
     """
     try:
-        with open(file_path, "r", encoding="utf-8") as file:
+        # Convert to absolute path if not already
+        abs_file_path = os.path.abspath(file_path)
+        with open(abs_file_path, "r", encoding="utf-8") as file:
             content = file.read()
         return content
     except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {file_path}")
+        raise FileNotFoundError(f"File not found: {abs_file_path}")
     except IOError as e:
-        raise IOError(f"Error reading file {file_path}: {e}")
+        raise IOError(f"Error reading file {abs_file_path}: {e}")
 
 
 @tool
@@ -216,16 +230,17 @@ def write_controller_code(file_path: str, java_code: str):
             java_code='public class MyController { ... }'
         )
     """
-    # Ensure the directory exists
-    directory = os.path.dirname(file_path)
+    # Convert to absolute path and ensure the directory exists
+    abs_file_path = os.path.abspath(file_path)
+    directory = os.path.dirname(abs_file_path)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     # Write the Java code to the file
-    with open(file_path, "w") as file:
+    with open(abs_file_path, "w") as file:
         file.write(java_code)
 
-    return f"Java controller code has been written to {file_path}"
+    return f"Java controller code has been written to {abs_file_path}"
 
 
 @tool()
